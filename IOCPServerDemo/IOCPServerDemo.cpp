@@ -46,7 +46,6 @@ typedef struct
 
 	WSABUF         Buff;
 	DWORD          NumberOfBytesRecvd;
-	DWORD          NumberOfBytesSended;
 	DWORD          Flags;
 
 	char           BuffData[MSGSIZE];
