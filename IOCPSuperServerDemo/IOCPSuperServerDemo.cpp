@@ -58,7 +58,9 @@ typedef struct
 	SOCKET newClient;
 } PER_IO_OPERATION_DATA, *LPPER_IO_OPERATION_DATA;
 
-
+//这两个函数是扩展库的，通过函数指针调用，不用每次都去调用WSAIoctl
+LPFN_ACCEPTEX lpfAcceptEx = NULL;
+LPFN_GETACCEPTEXSOCKADDRS lpfGetAcceptExSockAddrs = NULL;
 
 //工作者线程
 DWORD WINAPI WorkerThread(LPVOID);
@@ -85,6 +87,25 @@ int main()
 	//创建IO重叠的SOCKET，指定套接字的类型、使用的协议
 	SOCKET sListen = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 
+	//获得AcceptEx和GetAcceptExSockaddrs函数指针
+	GUID guidAcceptEx = WSAID_ACCEPTEX;
+	DWORD dwBytes = 0;
+	if (WSAIoctl(sListen, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		&guidAcceptEx, sizeof(guidAcceptEx), &lpfAcceptEx, sizeof(lpfAcceptEx),
+		&dwBytes, NULL, NULL) != 0)
+	{
+		cout << "Error: Get AcceptEx funcation fail." << endl;
+	}
+
+	GUID guidGetAcceptExSockAddrs = WSAID_GETACCEPTEXSOCKADDRS;
+	dwBytes = 0;
+	if (WSAIoctl(sListen, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		&guidGetAcceptExSockAddrs, sizeof(guidGetAcceptExSockAddrs), &lpfGetAcceptExSockAddrs, sizeof(lpfGetAcceptExSockAddrs),
+		&dwBytes, NULL, NULL) != 0)
+	{
+		cout << "Error: Get GetAcceptExSockAddrs funcation fail." << endl;
+	}
+
 	//绑定端口
 	SOCKADDR_IN localAddr;
 	localAddr.sin_family = AF_INET;
@@ -105,7 +126,7 @@ int main()
 	cout << "listen()" << endl;
 
 	//预备N个异步连接
-	for (int i = 0; i < systeminfo.dwNumberOfProcessors * 400; i++)
+	for (int i = 0; i < systeminfo.dwNumberOfProcessors * 5; i++)
 	{
 		//异步连接客户端，并读取数据，后面加上本地地址和远程地址
 		LPPER_IO_OPERATION_DATA lpPerIOData = NULL;
@@ -116,7 +137,7 @@ int main()
 		lpPerIOData->newClient = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);	//先创建Socket，节省时间
 		lpPerIOData->OperationType = ACCEPTEX_POSTED;
 
-		int rc = AcceptEx(
+		int rc = lpfAcceptEx(
 			sListen, 
 			lpPerIOData->newClient, 
 			lpPerIOData->Buff.buf,
@@ -135,7 +156,7 @@ int main()
 	int i = 0;
 	cin >> i;
 
-	//发送退出消息到队列
+	//投递退出消息到队列
 	for (DWORD i = 0; i < systeminfo.dwNumberOfProcessors * 2; i++)
 	{
 		PostQueuedCompletionStatus(CompletionPort, 0, 0, NULL);
@@ -193,7 +214,7 @@ DWORD WINAPI WorkerThread(LPVOID CompletionPortID)
 
 			SOCKADDR_IN localAddr, peerAddr;
 			int localLen = sizeof(SOCKADDR_IN), peerLen = sizeof(SOCKADDR_IN);
-			GetAcceptExSockaddrs(pioData->Buff.buf,
+			lpfGetAcceptExSockAddrs(pioData->Buff.buf,
 				pioData->Buff.len - ((sizeof(SOCKADDR_IN) + 16) * 2),
 				sizeof(SOCKADDR_IN) + 16,
 				sizeof(SOCKADDR_IN) + 16,
@@ -209,7 +230,7 @@ DWORD WINAPI WorkerThread(LPVOID CompletionPortID)
 			pioData->newClient = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);	//先创建Socket，节省时间
 			pioData->OperationType = ACCEPTEX_POSTED;
 
-			int rc = AcceptEx(
+			int rc = lpfAcceptEx(
 				pckData->ckSocket,
 				pioData->newClient,
 				pioData->Buff.buf,
@@ -220,7 +241,7 @@ DWORD WINAPI WorkerThread(LPVOID CompletionPortID)
 				&pioData->Overlapped);
 
 			//处理请求，发送响应
-			//printf("New Client[%s#%d]: %s\n", inet_ntoa(peerAddr.sin_addr), ntohs(peerAddr.sin_port), recvData);
+			printf("New Client[%s#%d]: %s\n", inet_ntoa(peerAddr.sin_addr), ntohs(peerAddr.sin_port), recvData);
 
 			send(mClient, szRespone, strlen(szRespone), 0);
 
@@ -279,6 +300,12 @@ DWORD WINAPI WorkerThread(LPVOID CompletionPortID)
 					&pioData->Overlapped,
 					NULL);
 			}
+		}
+		else if (SEND_POSTED == pioData->OperationType)
+		{
+
+
+
 		}
 		else
 		{
