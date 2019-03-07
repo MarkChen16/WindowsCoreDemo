@@ -145,11 +145,16 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="IocpTcpServer.h" />
+    <ClInclude Include="IocpType.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="WinSocketDef.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IOCPSuperServerDemo.cpp" />
+    <ClCompile Include="IocpTcpServer.cpp" />
+    <ClCompile Include="IocpType.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

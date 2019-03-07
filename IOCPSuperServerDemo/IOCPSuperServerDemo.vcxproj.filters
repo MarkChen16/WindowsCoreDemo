@@ -24,12 +24,27 @@
     <ClInclude Include="targetver.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="IocpTcpServer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSocketDef.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="IocpType.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="IOCPSuperServerDemo.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="IocpTcpServer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="IocpType.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

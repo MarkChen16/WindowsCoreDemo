@@ -7,15 +7,20 @@
 
 注意：
 使用AcceptEx()，使用完成端口的方式接受客户端的连接，让服务程序并发性能更加强大；
+
+HKEY_LOCAL_MACHINE\System\CurrectControlSet\services\Tcpip\Parameters
+为了使服务器TCP可用的临时端口达到最大，添加注册表MaxUserPort为65534个
+为了使服务器的TCP连接关闭后最快释放资源，添加注册表TcpTimedWaitDelay为30秒
 */
 
 #include "stdafx.h"
 
 #include <iostream>
 
+#include <vector>
+
 #include <WINSOCK2.H>
 #include <ws2tcpip.h>
-
 #include <mswsock.h>     //微软扩展的类库AcceptEx()
 
 #pragma comment(lib, "ws2_32.lib")
@@ -26,7 +31,7 @@
 using namespace std;
 
 #define PORT    6700
-#define MSGSIZE 1024
+#define MSGSIZE 4096	//使用4K，一个内存页面大小
 
 //完成键
 typedef struct
@@ -78,7 +83,7 @@ int main()
 	//创建工作者线程，线程个数是CPU核心的数量
 	SYSTEM_INFO systeminfo;
 	GetSystemInfo(&systeminfo);
-	for (DWORD i = 0; i < systeminfo.dwNumberOfProcessors * 2; i++)
+	for (DWORD i = 0; i < systeminfo.dwNumberOfProcessors * 2 + 2; i++)
 	{
 		CreateThread(NULL, 0, WorkerThread, CompletionPort, 0, NULL);
 		cout << "Create Worker Thread " << i + 1 << endl;
@@ -126,11 +131,13 @@ int main()
 	cout << "listen()" << endl;
 
 	//预备N个异步连接
-	for (int i = 0; i < systeminfo.dwNumberOfProcessors * 5; i++)
+	vector<LPPER_IO_OPERATION_DATA> lstAcceptIOData;
+	for (int i = 0; i < systeminfo.dwNumberOfProcessors * 3; i++)
 	{
 		//异步连接客户端，并读取数据，后面加上本地地址和远程地址
 		LPPER_IO_OPERATION_DATA lpPerIOData = NULL;
 		lpPerIOData = (LPPER_IO_OPERATION_DATA)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(PER_IO_OPERATION_DATA));
+		lstAcceptIOData.push_back(lpPerIOData);
 
 		lpPerIOData->Buff.len = MSGSIZE;
 		lpPerIOData->Buff.buf = lpPerIOData->BuffData;
@@ -154,10 +161,10 @@ int main()
 
 	//等待输入退出程序
 	int i = 0;
-	cin >> i;
+	std::cin >> i;
 
 	//投递退出消息到队列
-	for (DWORD i = 0; i < systeminfo.dwNumberOfProcessors * 2; i++)
+	for (DWORD i = 0; i < systeminfo.dwNumberOfProcessors * 2 + 2; i++)
 	{
 		PostQueuedCompletionStatus(CompletionPort, 0, 0, NULL);
 	}
@@ -168,6 +175,13 @@ int main()
 	//关闭服务端Socket
 	closesocket(sListen);
 	WSACleanup();
+
+	//清除AcceptEx的IO操作数据
+	for each (auto var in lstAcceptIOData)
+	{
+		HeapFree(GetProcessHeap(), 1, var);
+	}
+	lstAcceptIOData.clear();
 
 	return 0;
 }
