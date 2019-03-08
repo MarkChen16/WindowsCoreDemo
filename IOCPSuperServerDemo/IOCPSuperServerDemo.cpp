@@ -8,9 +8,14 @@
 注意：
 使用AcceptEx()，使用完成端口的方式接受客户端的连接，让服务程序并发性能更加强大；
 
-HKEY_LOCAL_MACHINE\System\CurrectControlSet\services\Tcpip\Parameters
-为了使服务器TCP可用的临时端口达到最大，添加注册表MaxUserPort为65534个
-为了使服务器的TCP连接关闭后最快释放资源，添加注册表TcpTimedWaitDelay为30秒
+Windows 下单机最大TCP连接数
+调整系统参数来调整单机的最大TCP连接数，Windows 下单机的TCP连接数有多个参数共同决定：
+以下都是通过修改注册表[HKEY_LOCAL_MACHINE \System \CurrentControlSet \Services \Tcpip \Parameters]
+1. 最大TCP连接数             TcpNumConnections
+2. TCP关闭延迟时间           TCPTimedWaitDelay    (30-240)s        
+3. 最大动态端口数            MaxUserPort  (Default = 5000, Max = 65534) TCP客户端和服务器连接时，客户端必须分配一个动态端口，默认情况下这个动态端口的分配范围为 1024-5000 ，也就是说默认情况下，客户端最多可以同时发起3977 个Socket 连接    
+4. 最大TCB 数量              MaxFreeTcbs系统为每个TCP 连接分配一个TCP 控制块(TCP control block or TCB)，这个控制块用于缓存TCP连接的一些参数，每个TCB需要分配 0.5 KB的pagepool 和 0.5KB 的Non-pagepool，也就说，每个TCP连接会占用 1KB 的系统内存。非Server版本，MaxFreeTcbs 的默认值为1000 （64M 以上物理内存）Server 版本，这个的默认值为 2000。也就是说，默认情况下，Server 版本最多同时可以建立并保持2000个TCP 连接。
+5. 最大TCB Hash table 数量   MaxHashTableSize TCB 是通过Hash table 来管理的。这个值指明分配 pagepool 内存的数量，也就是说，如果MaxFreeTcbs = 1000 , 则 pagepool 的内存数量为 500KB那么 MaxHashTableSize 应大于 500 才行。这个数量越大，则Hash table 的冗余度就越高，每次分配和查找 TCP  连接用时就越少。这个值必须是2的幂，且最大为65536.
 */
 
 #include "stdafx.h"
@@ -30,8 +35,11 @@ HKEY_LOCAL_MACHINE\System\CurrectControlSet\services\Tcpip\Parameters
 
 using namespace std;
 
+//监听的端口
 #define PORT    6700
-#define MSGSIZE 4096	//使用4K，一个内存页面大小
+
+//缓存使用4K，一个内存页面大小
+#define MSGSIZE 4096 * 10
 
 //完成键
 typedef struct
@@ -80,10 +88,12 @@ int main()
 	HANDLE CompletionPort = INVALID_HANDLE_VALUE;
 	CompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 
-	//创建工作者线程，线程个数是CPU核心的数量
+	//创建工作者线程，线程个数是CPU核心的两倍数量
 	SYSTEM_INFO systeminfo;
 	GetSystemInfo(&systeminfo);
-	for (DWORD i = 0; i < systeminfo.dwNumberOfProcessors * 2 + 2; i++)
+	int cntWorker = systeminfo.dwNumberOfProcessors * 2 + 2;
+
+	for (int i = 0; i < cntWorker; i++)
 	{
 		CreateThread(NULL, 0, WorkerThread, CompletionPort, 0, NULL);
 		cout << "Create Worker Thread " << i + 1 << endl;
@@ -114,8 +124,10 @@ int main()
 	//绑定端口
 	SOCKADDR_IN localAddr;
 	localAddr.sin_family = AF_INET;
-	localAddr.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
-	//localAddr.sin_addr.S_un.S_addr = inet_addr("192.168.249.134");
+	localAddr.sin_addr.S_un.S_addr = inet_addr("127.0.0.1"); 
+	localAddr.sin_addr.S_un.S_addr = inet_addr("192.168.249.134");
+	localAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+
 	localAddr.sin_port = htons(PORT);
 	bind(sListen, (struct sockaddr *)&localAddr, sizeof(SOCKADDR_IN));
 	cout << "bind()" << endl;
@@ -130,9 +142,13 @@ int main()
 	listen(sListen, SOMAXCONN);
 	cout << "listen()" << endl;
 
-	//预备N个异步连接
+	//投递N个异步连接操作，当系统连接客户端并读取第一块数据后，添加到完成端口队列中；
+	cout << "Max Connection: ";
+	int cntMaxConnection = 0;
+	cin >> cntMaxConnection;
+
 	vector<LPPER_IO_OPERATION_DATA> lstAcceptIOData;
-	for (int i = 0; i < systeminfo.dwNumberOfProcessors * 3; i++)
+	for (int i = 0; i < cntMaxConnection; i++)
 	{
 		//异步连接客户端，并读取数据，后面加上本地地址和远程地址
 		LPPER_IO_OPERATION_DATA lpPerIOData = NULL;
@@ -141,8 +157,10 @@ int main()
 
 		lpPerIOData->Buff.len = MSGSIZE;
 		lpPerIOData->Buff.buf = lpPerIOData->BuffData;
-		lpPerIOData->newClient = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);	//先创建Socket，节省时间
 		lpPerIOData->OperationType = ACCEPTEX_POSTED;
+
+		//先创建Socket，节省时间
+		lpPerIOData->newClient = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
 
 		int rc = lpfAcceptEx(
 			sListen, 
@@ -159,12 +177,14 @@ int main()
 		}
 	}
 
+	cout << "init all acceptex..." << endl;
+
 	//等待输入退出程序
 	int i = 0;
 	std::cin >> i;
 
 	//投递退出消息到队列
-	for (DWORD i = 0; i < systeminfo.dwNumberOfProcessors * 2 + 2; i++)
+	for (int i = 0; i < cntWorker; i++)
 	{
 		PostQueuedCompletionStatus(CompletionPort, 0, 0, NULL);
 	}
@@ -226,8 +246,9 @@ DWORD WINAPI WorkerThread(LPVOID CompletionPortID)
 			memcpy(recvData, pioData->BuffData, recvLen);
 			recvData[recvLen] = '\0';
 
-			SOCKADDR_IN localAddr, peerAddr;
-			int localLen = sizeof(SOCKADDR_IN), peerLen = sizeof(SOCKADDR_IN);
+			LPSOCKADDR localAddr, peerAddr;
+			int localLen = 0, peerLen = 0;
+
 			lpfGetAcceptExSockAddrs(pioData->Buff.buf,
 				pioData->Buff.len - ((sizeof(SOCKADDR_IN) + 16) * 2),
 				sizeof(SOCKADDR_IN) + 16,
@@ -236,6 +257,10 @@ DWORD WINAPI WorkerThread(LPVOID CompletionPortID)
 				&localLen,
 				(LPSOCKADDR*)&peerAddr,
 				&peerLen);
+
+			SOCKADDR_IN clientAddr;
+			memcpy(&clientAddr, peerAddr, sizeof(clientAddr));
+			printf("New Client[%s:%d]: %s\n", inet_ntoa(clientAddr.sin_addr), clientAddr.sin_port, recvData);
 
 			//继续发起AcceptEx接受其他客户端的连接
 			ZeroMemory(pioData, sizeof(pioData));
@@ -255,14 +280,12 @@ DWORD WINAPI WorkerThread(LPVOID CompletionPortID)
 				&pioData->Overlapped);
 
 			//处理请求，发送响应
-			printf("New Client[%s#%d]: %s\n", inet_ntoa(peerAddr.sin_addr), ntohs(peerAddr.sin_port), recvData);
-
 			send(mClient, szRespone, strlen(szRespone), 0);
 
 			//将IO完成端口和新的客户端Socket绑定
 			PCOMPLETIONKEY pckClient = new COMPLETIONKEY;
 			pckClient->ckSocket = mClient;
-			pckClient->ckAddr = peerAddr;
+			pckClient->ckAddr = clientAddr;
 			CreateIoCompletionPort((HANDLE)pckClient->ckSocket, CompletionPort, (DWORD)pckClient, 0);
 
 			//对新的客户端发起异步IO操作 - WSARecv()：发送数据(WSASend和WSASendTo)，接收数据(WSARecv和WSARecvFrom)

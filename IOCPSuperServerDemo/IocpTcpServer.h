@@ -40,11 +40,11 @@ protected:
 	virtual void errorEvent();
 
 private:
-	void doAccept();
-	void doSend();
-	void doRecv();
-	void doClose();
-	void doQuit();
+	//void doAccept();
+	//void doSend();
+	//void doRecv();
+	//void doClose();
+	//void doQuit();
 
 private:
 

@@ -7,6 +7,7 @@
 //操作类型
 typedef enum
 {
+	NULL_POSTED,
 	ACCEPT_POSTED,
 	RECV_POSTED,
 	SEND_POSTED,
@@ -21,22 +22,45 @@ typedef struct
 	SOCKADDR_IN ckAddr;
 } COMPLETIONKEY, *PCOMPLETIONKEY;
 
-//IO操作数据
-typedef struct
+class COMPLETION_KEY
 {
-	WSAOVERLAPPED Overlapped;
-	WSABUF         Buff;	//数据缓冲区,用于WSASend/WSARecv
-	DWORD          NumberOfBytesRecvd;
-	DWORD          NumberOfBytesSended;
-	DWORD          Flags;
+public:
+	SOCKET Socket;
+	SOCKADDR_IN Addr;
 
-	char           BuffData[MSGSIZE];
+	const char *toString();
+private:
+	char mAddrInfo[100];
+};
+
+//IO操作数据
+class IO_OPERATION_DATA
+{
+public:
+	IO_OPERATION_DATA();
+	~IO_OPERATION_DATA();
+
+	WSAOVERLAPPED  Overlapped;
+
+	WSABUF Buff;
+	DWORD NumberOfBytesRecvd;
+	DWORD NumberOfBytesSended;
+	DWORD Flags;
+
+	char *BuffData;
+	DWORD BuffLen;
+
+	SOCKET NewClient;
+
 	OPERATION_TYPE OperationType;
 
-	SOCKET newClient;
-} PER_IO_OPERATION_DATA, *LPPER_IO_OPERATION_DATA;
+	void reset();
+	void resetBuff();
+	void resetOverlapped();
 
-LPFN_ACCEPTEX lpfAcceptEx = NULL;
-LPFN_GETACCEPTEXSOCKADDRS lpfGetAcceptExSockAddrs = NULL;
+private:
+	
+};
 
+typedef IO_OPERATION_DATA * LPIO_OPERATION_DATA;
 

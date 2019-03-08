@@ -19,9 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{797FE132-5E8D-4705-B8EE-512BABF99ED4}</ProjectGuid>
+    <ProjectGuid>{C19F0E4F-808E-423B-8964-A1BF873C17FA}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>IOCPSuperServerDemo</RootNamespace>
+    <RootNamespace>IOCPClientDemo</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -145,16 +145,11 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="IocpTcpServer.h" />
-    <ClInclude Include="IocpType.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="WinSocketDef.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="IOCPSuperServerDemo.cpp" />
-    <ClCompile Include="IocpTcpServer.cpp" />
-    <ClCompile Include="IocpType.cpp" />
+    <ClCompile Include="IOCPClientDemo.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
