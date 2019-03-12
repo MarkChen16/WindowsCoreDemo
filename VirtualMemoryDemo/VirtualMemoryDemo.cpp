@@ -11,6 +11,36 @@
 
 using namespace std;
 
+/*
+虚拟内存的用途：保存大型数据和数据结构
+
+内存分页机制：
+
+访问物理内存的寻址方式：虚拟地址空间的页号+偏移量 -》 MMU（通过映射表获取物理内存的页号） -》 物理内存的页号+偏移量
+
+虚拟内存原理：如果找不到映射的物理页号，发生缺页中断后进程中止运行，直到执行物理内存和页交换文件的换出换入操作；
+
+进程：系统中程序执行的数据和资源集合的基本单位；x86 32位总线寻址的最大是4G，x64 64总线寻址的最大是16T
+内存模型包括：空指针区、用户模式分区、64K禁入分区、内核模式分区(存放内核对象)
+
+系统创建进程：创建一个新的进程内核对象、创建一个私有地址空间；
+
+用户模式分区：
+	全局变量和静态变量
+	栈（函数参数和局部变量，1M向下分配）
+	堆（new、malloc，x86 2G的虚拟地址空间向上分配）
+	文字常量
+	程序代码
+
+线程：系统程序执行的运算和调度的最小单位
+每个线程都有独立的栈、寄存器，系统做线程上下文切换时需要还原现场，在分配的时间片执行有限的指令；
+
+VirtualAlloc
+VirtualProtect
+VirtualFree
+*/
+
+
 //intRow X intCol的表格
 int intRow = 256, intCol = 1024;
 
@@ -66,7 +96,7 @@ bool SetCellData(LPVOID pAddr, int x, int y, const char *szData)
 	//如果还没提交
 	if (info.State != MEM_COMMIT)
 	{
-		VirtualAlloc(pCurrCell, sizeof(CELL_DATA), MEM_COMMIT, PAGE_READWRITE);
+		LPVOID lpCurr = VirtualAlloc(pCurrCell, sizeof(CELL_DATA), MEM_COMMIT, PAGE_READWRITE);
 		ShowMemoryStatus("提交到物理内存：", pCurrCell);
 	}
 	
@@ -168,7 +198,8 @@ int main()
 	ShowMemoryStatus("保留进程虚拟地址空间：", pVirtual);
 
 	//全部提交到物理内存
-	LPVOID pPhysics = VirtualAlloc(pVirtual, nSize, MEM_COMMIT, PAGE_READWRITE);
+	LPVOID pPhysics = NULL;
+	pPhysics = VirtualAlloc(pVirtual, nSize, MEM_COMMIT, PAGE_READWRITE);
 	if (pPhysics == NULL)
 	{
 		cout << "一下子分配不了这么多物理内存！" << endl;
