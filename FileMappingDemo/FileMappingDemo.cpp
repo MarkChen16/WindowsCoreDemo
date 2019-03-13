@@ -57,13 +57,13 @@ int main()
 	//同一个EXE文件的不同实例共享数据
 	cout << "Instance ID: " << InstanceCount++ << endl;
 
-	//读取大文件
+	//使用内存映射读取大文件
 	//ReadBigFile();
 
 	//创建基于页文件的内存映射文件
 	//ShareData();
 
-	//创建稀疏映射文件
+	//创建稀疏的内存映射文件
 	//CreateSparseFile();
 
 	int iTmp = 0;

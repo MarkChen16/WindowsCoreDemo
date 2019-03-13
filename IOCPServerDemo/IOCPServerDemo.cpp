@@ -107,7 +107,7 @@ int main()
 		pckClient->clientAddr = addrClient;
 		CreateIoCompletionPort((HANDLE)sClient, CompletionPort, (DWORD)pckClient, 0);	//指定设备句柄、IO完成端口、完成键、线程池线程数量
 
-		//初始化IO操作数据
+		//初始化IO操作数据(使用进程的默认堆分配内存)
 		LPPER_IO_OPERATION_DATA lpPerIOData = NULL;
 		lpPerIOData = (LPPER_IO_OPERATION_DATA)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(PER_IO_OPERATION_DATA));
 
