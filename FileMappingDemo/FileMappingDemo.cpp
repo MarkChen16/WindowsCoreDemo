@@ -11,7 +11,7 @@ using namespace std;
 
 /*
 虚拟内存VS内存映射文件：
-虚拟内在：预订一块地址空间，并调拨到物理内存或页交换文件；
+虚拟内存：预订一块地址空间，并调拨到物理内存（当系统的物理内存不足时保存到页交换文件）；
 内存映射文件：预订一块地址空间，并调拨到磁盘上已有的文件；
 
 内存映射文件的用途：
@@ -61,17 +61,16 @@ int main()
 	//ReadBigFile();
 
 	//创建基于页文件的内存映射文件
-	//ShareData();
+	ShareData();
 
 	//创建稀疏的内存映射文件
 	//CreateSparseFile();
 
-	int iTmp = 0;
-	cin >> iTmp;
-
+	getchar();
     return 0;
 }
 
+//读取大文件
 void ReadBigFile()
 {
 	SYSTEM_INFO info;
@@ -144,6 +143,7 @@ void ReadBigFile()
 	cout << "Num of Char A: " << qwNumOfCharA << endl;
 }
 
+//不同进程之间共享数据
 void ShareData()
 {
 	HANDLE hPageMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 64 * 1024, L"GuiQuan-Map-Page");
@@ -156,6 +156,7 @@ void ShareData()
 
 			cout << "Read: " << (char *)pbData << endl;
 
+			//关闭映射
 			UnmapViewOfFile(pbData);
 		}
 		else if (GetLastError() == NO_ERROR)
@@ -167,9 +168,10 @@ void ShareData()
 
 			cout << "Write: " << pbData << endl;
 
-			int iTmp = 0;
-			cin >> iTmp;
+			//关闭之后，消费者进程将收不到数据
+			getchar();
 
+			//关闭映射
 			UnmapViewOfFile(pbData);
 		}
 
@@ -177,6 +179,7 @@ void ShareData()
 	}
 }
 
+//创建稀疏文件
 void CreateSparseFile()
 {
 	HANDLE hFileMapping = CreateFileMapping(
@@ -196,6 +199,7 @@ void CreateSparseFile()
 	//访问数据，保存数据
 	pbData[0] = 'A';
 
+	//关闭映射
 	UnmapViewOfFile(pbData);
 
 	CloseHandle(hFileMapping);

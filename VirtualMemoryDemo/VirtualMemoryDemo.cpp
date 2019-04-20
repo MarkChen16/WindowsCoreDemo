@@ -40,6 +40,7 @@ using namespace std;
 每个线程都有独立的栈、寄存器，系统做线程上下文切换时需要还原现场，在分配的时间片执行有限的指令；
 
 VirtualAlloc
+VirtualQuery
 VirtualProtect
 VirtualFree
 */
@@ -248,9 +249,7 @@ int main()
 	VirtualFree(pVirtual, 0, MEM_RELEASE);
 	ShowMemoryStatus("释放整个保留的虚拟地址空间和物理内存：", pVirtual);
 
-	int i;
-	cin >> i;
-
+	getchar();
     return 0;
 }
 
