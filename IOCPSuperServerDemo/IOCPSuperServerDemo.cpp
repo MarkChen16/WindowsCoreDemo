@@ -191,7 +191,7 @@ int main()
 		PostQueuedCompletionStatus(CompletionPort, 0, 0, NULL);
 	}
 
-	//关闭句柄
+	//关闭完成端口
 	CloseHandle(CompletionPort);
 
 	//关闭服务端Socket

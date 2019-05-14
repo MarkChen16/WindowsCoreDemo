@@ -1,0 +1,37 @@
+// ATLDll.idl : ATLDll的 IDL 源
+//
+
+// 此文件将由 MIDL 工具处理以
+// 产生类型库(ATLDll.tlb)和封送处理代码。
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	object,
+	uuid(0619231D-04DE-4C02-877B-DE42A3F13ED0),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IAtlClass : IDispatch{
+	[id(1)] HRESULT init([in] LONG lgType);
+	[id(2)] HRESULT add([in] LONG lgX, [in] LONG lgY);
+	[propget, id(3)] HRESULT result([out, retval] LONG* pVal);
+};
+[
+	uuid(7C713521-8697-4176-8A25-C069ABF01725),
+	version(1.0),
+]
+library ATLDllLib
+{
+	importlib("stdole2.tlb");
+	[
+		uuid(205E15D6-5474-42B2-8732-1E45C5608FE3)		
+	]
+	coclass AtlClass
+	{
+		[default] interface IAtlClass;
+	};
+};
+
